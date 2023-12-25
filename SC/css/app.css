@@ -1,0 +1,9 @@
+.content {
+    height: 85%;
+    width: 100%;
+    display: flex;
+}
+
+.class {
+    display: block
+}

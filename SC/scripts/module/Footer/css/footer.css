@@ -1,0 +1,8 @@
+.footer {
+    display: flex;
+    height: 10%;
+    width: 100%;
+    background: linear-gradient(rgb(114 211 197 / 30%), rgb(0 42 52 / 30%));
+    box-shadow: 0px 9px 20px 0px;
+
+}

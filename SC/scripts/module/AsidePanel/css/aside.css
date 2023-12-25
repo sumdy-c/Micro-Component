@@ -1,0 +1,37 @@
+.aside {
+    width: 10%;
+    height: 100%;
+    background-color: rgb(163 169 255 / 20%);   
+}
+
+.button_container {
+    display: flex;
+    flex-direction: column;
+}
+
+.button {
+    cursor: pointer;
+    width: max-content;
+    margin: 5px;
+    padding: 5px;
+    color: white;
+    background-color: grey;
+    border: none;
+    border-radius: 4px;
+}
+
+.button:active {
+    transition: 200ms;
+    transform: scale(0.9);
+}
+
+.button__active {
+    cursor: default;
+    width: max-content;
+    margin: 5px;
+    padding: 5px;
+    color: black;
+    background-color: #e5e5e5;
+    border: 1px solid;
+    border-radius: 4px;
+}

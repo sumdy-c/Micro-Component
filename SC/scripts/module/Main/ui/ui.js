@@ -6,10 +6,10 @@ const alertBlock = (title, arrText) => {
     }
     return(
         S(DIV, '.page_text__block').append(
-            S(SPAN, '.page_sub_title').html(title),
+            S(SPAN, '.page_sub_title').text(title),
             S(DIV, '.page_text__content').append(
                 arrText.map((text) => {
-                    return S(P).html(text)  
+                    return S(P).text(text)  
                 })
             )
         )

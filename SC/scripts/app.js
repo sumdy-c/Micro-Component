@@ -1,7 +1,7 @@
 const App = () => {
     const S = new MicroComponent({ mutateCSS: true, deleteNativeCSS: true, progressiveVar: true }).use(['app.css']);
 
-    const PAGE = new State('global_state');
+    const PAGE = new State('test_page');
 
     const BUTTONS = new State([
         {
@@ -36,8 +36,13 @@ const App = () => {
         },
         {
             title: 'Глобальное состояние',
-            isActive: true,
+            isActive: false,
             alias: 'global_state'
+        },
+        {
+            title: 'Тестовая страница',
+            isActive: true,
+            alias: 'test_page'
         },
     ]);
 

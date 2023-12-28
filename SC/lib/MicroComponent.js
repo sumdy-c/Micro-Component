@@ -105,6 +105,10 @@ class SCmove {
 	 */
 	states;
 	/**
+	 * Ссылка на основной компонент Micro Component
+	 */
+	SCmain;
+	/**
 	 * Проксируемое значение отсылающие к прокси
 	 */
 	valueState;
@@ -141,7 +145,8 @@ class SCmove {
 	/**
 	 * Инициализация SCmove
 	 */
-	constructor() {
+	constructor(SCmain) {
+		this.SCmain = SCmain;
 		this.states = new Set();
 	}
 
@@ -165,7 +170,7 @@ class SCmove {
 				if (tree[prop] === undefined) {
 					tree[prop] = this.stateProxy(o[prop], fn, `${path}.${prop}`);
 				}
-				return tree[prop];
+				return Reflect.get(...arguments);
 			},
 			set: (_, prop, val) => fn(val, prop, proxySC, o[prop]) || 1,
 		});
@@ -191,7 +196,7 @@ class SCmove {
 				if (tree[prop] === undefined) {
 					tree[prop] = this.handlerDOM(o[prop], fn, `${path}.${prop}`);
 				}
-				return tree[prop];
+				return Reflect.get(...arguments);
 			},
 			set: (_, prop, val) => {
 				fn(val, prop, proxyDOM)
@@ -207,6 +212,16 @@ class SCmove {
 		HTMLElement = state.userNode;
 	}
 
+	requisite = (state, renderFn) => {
+		console.log(state);
+
+		const child_node = this.SCmain.stylize(state, renderFn, 'child');
+
+		// console.log(child_node);
+
+		return child_node;
+	}
+
 	/**
 	 * Функция немедленного вызова при изменений проксируемого объекта
 	 * @param {service} val приходящее новое значение
@@ -217,13 +232,35 @@ class SCmove {
 				if(item.tree) {
 						item.state = val;
 						item.CollectionDOM.forEach(html => {
-							let newNode = html.Function(val);
+							if(html.parent) {
+								let newNode = html.parent.Function(html.parentState.state, (state, renderFn) => {
+									this.requisite(state, renderFn);
+								});
+								
+								if(!newNode) {
+									newNode = [];
+									const virtualElement = document.createElement('micro_component');
+									virtualElement.setAttribute("style", "height: 0; width: 0; display: none;");
+									newNode.push(virtualElement);
+								}
+
+								html.parent.virtualDOM.DOM = { virtual: html.parent.lastState, userNode: newNode[0], fn: () => {
+									html.parent.lastState = newNode[0];
+								}};
+
+								return;
+							}
+
+							let newNode = html.Function(val, (state, renderFn) => {
+								return this.requisite(state, renderFn);
+							});
 							if(!newNode) {
 								newNode = [];
-								const virtualElement = document.createElement('source');
+								const virtualElement = document.createElement('micro_component');
 								virtualElement.setAttribute("style", "height: 0; width: 0; display: none;");
 								newNode.push(virtualElement);
 							}
+
 							html.virtualDOM.DOM = { virtual: html.lastState, userNode: newNode[0], fn: () => {
 								html.lastState = newNode[0]
 							}};
@@ -267,7 +304,7 @@ class SCmove {
 	 * @param { any } arg значение инициализации
 	 * @returns { void } список состояний
 	 */
-	controlState(arg, mod, noCheck, SCS, lastState) {
+	controlState(arg, mod, noCheck, SCS, lastState, paramRender) {
 		let key = Date.now() + this.safeIterator;
 		if(arg === 'tree') {
 			let element = null;
@@ -281,14 +318,33 @@ class SCmove {
 						virtualDOM: this.handlerDOM(lastState, this.render, item.proxyState)
 					};
 
+					if(paramRender) {
+						this.states.forEach(item => {
+							if (item.proxyState === paramRender.parent) {
+								item.CollectionDOM.forEach((virtual => {
+									if(fn === virtual.Function) {
+										VIRTUAL_CONNECTOR.Function = fn;
+										VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+										VIRTUAL_CONNECTOR.parent = virtual;
+										VIRTUAL_CONNECTOR.parentState = item;
+										VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
+										VIRTUAL_CONNECTOR.virtualDOM = virtual.virtualDOM;
+									}
+								}))
+							}
+						})
+					};
+
 					item.CollectionDOM.push(VIRTUAL_CONNECTOR);
 
 					if(item.proxyState.value.value) {
-						let newNode = VIRTUAL_CONNECTOR.Function(item.proxyState.value.value);
+						let newNode = VIRTUAL_CONNECTOR.Function(item.proxyState.value.value, (state, renderFn) => { 
+							return this.requisite(state, renderFn);
+						});
 
 						if(!newNode) {
 							newNode = [];
-							const virtualElement = document.createElement('source');
+							const virtualElement = document.createElement('micro_component');
 							virtualElement.setAttribute("style", "height: 0; width: 0; display: none;");
 							newNode.push(virtualElement);	
 						}
@@ -306,6 +362,8 @@ class SCmove {
 				};
 			});
 
+
+
 			if (checkState) {
 				return element;
 			};
@@ -316,6 +374,23 @@ class SCmove {
 				virtualDOM: this.handlerDOM(lastState, this.render, mod)
 			};
 
+			if(paramRender) {
+				this.states.forEach(item => {
+					if (item.proxyState === paramRender.parent) {
+						item.CollectionDOM.forEach((virtual => {
+							if(fn === virtual.Function) {
+								VIRTUAL_CONNECTOR.Function = fn;
+								VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+								VIRTUAL_CONNECTOR.parent = virtual;
+								VIRTUAL_CONNECTOR.parentState = item;
+								VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
+								VIRTUAL_CONNECTOR.virtualDOM = virtual.virtualDOM;
+							}
+						}))
+					}
+				})
+			}
+
 			const itemState = {
 				state: mod.value,
 				key: key,
@@ -325,11 +400,19 @@ class SCmove {
 			}
 
 			if(mod.value) {
-				let newNode = VIRTUAL_CONNECTOR.Function(mod.value);
+				let newNode;
+				if(VIRTUAL_CONNECTOR.parent) {
+					this.states.add(itemState);
+					return;
+				} else {
+					newNode = VIRTUAL_CONNECTOR.Function(mod.value, (state, renderFn) => { 
+						return this.requisite(state, renderFn)
+					});	
+				}
 				
 				if(!newNode) {
 					newNode = [];
-					const virtualElement = document.createElement('source');
+					const virtualElement = document.createElement('micro_component');
 					virtualElement.setAttribute("style", "height: 0; width: 0; display: none;");
 					newNode.push(virtualElement);	
 				}
@@ -388,10 +471,10 @@ class SCmove {
 		arg.value = this.valueState;
 	}
 
-	createStateTree(instance, SCS, fn, arg, wrap) {
+	createStateTree(instance, SCS, fn, arg, wrap, paramRender) {
 		const valueState = this.stateProxy({ value: instance.value }, this.action, { value: null });
 		this.safeIterator++;
-		const state = this.controlState('tree', instance, SCS, fn, wrap);
+		const state = this.controlState('tree', instance, SCS, fn, wrap, paramRender);
 		instance.value = valueState;
 		return state;
 	}
@@ -437,11 +520,23 @@ class SCmove {
 	 * @param {*} State Экземпляр работы с состоянием
 	 * @param {*} fn Функция построения дерева
 	 */
-	statement(instance, SCmain, fn, arg, wrap) {
-
+	statement(instance, SCmain, fn, arg, wrap, dependency) {
 		this.safeIterator = 0;
 
-		return this.createStateTree(instance, SCmain, fn, arg, wrap);
+		const node = this.createStateTree(instance, SCmain, fn, arg, wrap);
+
+		if(dependency === 'child') {
+			return node;
+		}
+
+		if(dependency && Array.isArray(dependency)) {
+			dependency.forEach(item => {
+				this.safeIterator++;
+				this.createStateTree(item.instance, SCmain, fn, item, wrap, { variant: 'dep', parent: instance, value_parent: arg.save_value });
+			});
+		}
+
+		return node;
 	}
 }
 
@@ -742,10 +837,12 @@ class MicroComponent {
 	 * @param { string } stylesClass имя по которому должны вернуть стили
 	 * @returns Стилизованный селектор
 	 */
-	stylize = (selector, stylesClass) => {
+	stylize = (selector, stylesClass, dependency) => {
 		if(selector.__proto__.constructor.name === 'State' && typeof stylesClass === 'function') {
+
 			let current = null;
 			let element;
+
 			MicroStateComponents.forEach((sc) => {
 				if (this.SCid === sc.SCid) {
 					current = sc;
@@ -756,25 +853,25 @@ class MicroComponent {
 				item.CollectionDOM.forEach(virtual => {
 					if(virtual.Function.toString() === stylesClass.toString()) {
 						element = virtual.lastState;
-
 					}
 				});
 			});
-
+			
 			if(element) {
 				return element
 			};
 
 			this.childrenVirtual = true;
 
-			const wrap = document.createElement('source');
+			const wrap = document.createElement('micro_component');
 			wrap.setAttribute("style", "height: 0; width: 0; display: none;");
-			
-			const node = current.SCmove.statement(selector.instance, current, stylesClass, selector, wrap);
 
+			const node = current.SCmove.statement(selector.instance, current, stylesClass, selector, wrap, dependency);
+			
 			// Нужный узел придёт обратно только при наличии значения в инциализации стейта
 			
 			this.childrenVirtual = false;
+
 			if(node) {
 				return node;
 			};
@@ -794,8 +891,7 @@ class MicroComponent {
 					return styledSelector = $(selector).attr('SC', this.SCid);
 				}
 			};
-
-			// --- 
+ 
 			let styledSelector;
 
 			if (this.hasCapital(selector) && selector[0] !== '.' && this.createElementCheck(selector)) {
@@ -912,7 +1008,7 @@ class MicroComponent {
 		}
 
 		this.SCid = (Date.now() / 28).toFixed(0) + this.generateRandomValue();
-		this.SCmove = new SCmove();
+		this.SCmove = new SCmove(this);
 		MicroStateComponents.add(this);
 		this.goSC();
 

@@ -1,15 +1,12 @@
 const Main = function(PAGE, change) {
     const S = new MicroComponent({ mutateCSS: true, deleteNativeCSS: true, progressiveVar: true }).use(['main.css']);
-  
-    // разобрать стороние стейты
-    const HI = new State({ text: 'Я только что создан!'});
 
     return (
         S(DIV, '.main').append(
             S(PAGE, (page) => {
                 switch(page){
                     case 'start':
-                        return StartPage(S, change, HI);
+                        return StartPage(S, change);
                     case 'install':
                         return InstallationPage(S, change);
                     case 'settings':
@@ -21,7 +18,7 @@ const Main = function(PAGE, change) {
                     case 'local_state':
                         return LocalStatePage(S, change);
                     case 'global_state':
-                        return GlobalStatePage(S, change, HI);
+                        return GlobalStatePage(S, change);
                     case 'test_page':
                         return TestPage(S);
                 }

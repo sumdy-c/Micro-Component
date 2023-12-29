@@ -2,7 +2,7 @@ let S;
 
 const alertBlock = (title, arrText) => {
     if(!S) {
-        S = GetMicroStateComponents('main.css');
+        S = MCGet.GetMicroStateComponents('main.css');
     }
     return(
         S(DIV, '.page_text__block').append(
@@ -18,7 +18,7 @@ const alertBlock = (title, arrText) => {
 
 const textBlock = (arrText) => {
     if(!S) {
-        S = GetMicroStateComponents('main.css');
+        S = MCGet.GetMicroStateComponents('main.css');
     }
     return arrText.map((text) => {
         return S(SPAN, '.page_text').html(text)
@@ -27,7 +27,7 @@ const textBlock = (arrText) => {
 
 const codeBlock = (code, title) => {
     if(!S) {
-        S = GetMicroStateComponents('main.css');
+        S = MCGet.GetMicroStateComponents('main.css');
     }
 
     return(

@@ -101,7 +101,11 @@ class State {
 	 */
 	set(new_value) {
 		this.set_save(new_value);
-		this.instance.value.value = new_value;
+		try {
+			this.instance.value.value = new_value;	
+		} catch (error) {
+			console.error('[Micro Component] Вероятно вы инициализировали состояние, но не создали его функцией привязки к компоненту. Пожалуйста удостоверьтесь, что контролёр был создан.')
+		}
 	}
 
 	reg() {
@@ -286,7 +290,9 @@ class SCmove {
 				if(item.tree) {
 						item.state = val;
 						item.CollectionDOM.forEach(html => {
+							console.log(item);
 							console.log(html);
+
 							if(html.parent) {
 								let newNode = html.parent.Function(html.parentState.state, (state, renderFn) => {
 									this.requisite(state, renderFn, item);
@@ -432,7 +438,6 @@ class SCmove {
 		
 						element = newNode[0];
 					} else {
-						console.log('sdfsdfd')
 						element = null;
 					}
 
@@ -461,10 +466,10 @@ class SCmove {
 				this.treeVirtualState.forEach(item => {
 					item.CollectionDOM.push(VIRTUAL_CONNECTOR);
 				});
+				console.log(VIRTUAL_CONNECTOR);
 			};
 
 			if(paramRender && paramRender.variant === "dep") {
-				console.log('sdfsdf')
 				this.states.forEach(item => {
 					if (item.proxyState === paramRender.parent) {
 						item.CollectionDOM.forEach((virtual => {
@@ -479,6 +484,7 @@ class SCmove {
 						}))
 					}
 				})
+				console.log(VIRTUAL_CONNECTOR);
 			}
 
 			const itemState = {

@@ -15,12 +15,7 @@ const Aside = function(BUTTONS, change) {
                                     });
                     })
                 )
-            )),
-            S(BUTTON).html('Получить состояние').on('click', () => {
-                const instState = MCGet.GetState('ckskdfjgk');
-                instState.set('РАБОТАЕТ!');
-            })
-
+            ))
         )
     )
 }

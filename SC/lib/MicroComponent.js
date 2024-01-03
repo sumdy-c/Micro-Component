@@ -265,7 +265,7 @@ class SCmove {
 
 	render = async (state, prop, HTMLElement) => state.virtual.replaceWith(state.userNode);
 	
-	requisite = (state, renderFn, target, parentFn) => {
+	requisite = (state, renderFn, target, parentFn, mainFn) => {
 		const renderChild = {
 			key: 'child',
 			parent: target,
@@ -279,6 +279,8 @@ class SCmove {
 				skip = true;
 			}
 		});
+		
+		
 
 		if(!skip) {
 			this.treeVirtualState.push(target);
@@ -312,7 +314,6 @@ class SCmove {
 									this.states.forEach(item => {
 										if(item.key === html.parentState.key) {
 											newNode = html.parent.Function(html.parentState.state, (state, renderFn) => {
-												// при втором рендере приходит старая нода, и затирает актуальную
 												return this.requisite(state, renderFn, item, html.parent.Function);
 											});
 										}
@@ -400,7 +401,7 @@ class SCmove {
 	 * @returns { void } список состояний
 	 */
 	controlState(arg, mod, noCheck, SCS, lastState, paramRender) {
-		let key = this.safeIterator;
+		let key = this.uuidv4();
 		if(arg === 'tree') {
 			let element = null;
 			const fn = SCS;
@@ -426,11 +427,13 @@ class SCmove {
 					const COLLECTION_CONTAINER = [];
 
 					if(paramRender && paramRender.variant === "dep") {
+						const fnTree = [];
+						fnTree.push(fn);
 						this.states.forEach(item => {
 							if (item.proxyState === paramRender.parent) {
 								item.CollectionDOM.forEach((virtual => {
-									let VIRTUAL_CONNECTOR = {}
-									if(fn === virtual.Function) {
+									let VIRTUAL_CONNECTOR = {};
+									if(fnTree.includes(virtual.Function)) {
 										VIRTUAL_CONNECTOR.Function = virtual.Function;
 										VIRTUAL_CONNECTOR.lastState = virtual.lastState;
 										VIRTUAL_CONNECTOR.parent = virtual;
@@ -438,23 +441,24 @@ class SCmove {
 										VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
 										VIRTUAL_CONNECTOR.virtualDOM = virtual.virtualDOM;
 										COLLECTION_CONTAINER.push(VIRTUAL_CONNECTOR);
-									}
-		
-									if(virtual.parentFn === fn) {
-										VIRTUAL_CONNECTOR.Function = virtual.Function;
-										VIRTUAL_CONNECTOR.lastState = virtual.lastState;
-										VIRTUAL_CONNECTOR.parent = virtual;
-										VIRTUAL_CONNECTOR.parentState = item;
-										VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
-										VIRTUAL_CONNECTOR.virtualDOM = virtual.virtualDOM;
-										COLLECTION_CONTAINER.push(VIRTUAL_CONNECTOR);
+										return;
 									}
 
+									if(fnTree.includes(virtual.parentFn)) {
+										fnTree.push(virtual.Function);
+										VIRTUAL_CONNECTOR.Function = virtual.Function;
+										VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+										VIRTUAL_CONNECTOR.parent = virtual;
+										VIRTUAL_CONNECTOR.parentState = item;
+										VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
+										VIRTUAL_CONNECTOR.virtualDOM = virtual.virtualDOM;
+										COLLECTION_CONTAINER.push(VIRTUAL_CONNECTOR);
+										return;
+									}
 								}))
 							}
-						})
+						});
 					};
-
 
 					if(COLLECTION_CONTAINER.length) {
 						item.CollectionDOM.push(...COLLECTION_CONTAINER);
@@ -462,8 +466,7 @@ class SCmove {
 						item.CollectionDOM.push(VIRTUAL_CONNECTOR);
 					}
 
-					if(item.state) {
-						console.log(item.state);
+					if(item.state && !COLLECTION_CONTAINER.length) {
 						let newNode = VIRTUAL_CONNECTOR.Function(item.state, (state, renderFn) => { 
 							return this.requisite(state, renderFn, item, VIRTUAL_CONNECTOR.Function);
 						});
@@ -504,7 +507,6 @@ class SCmove {
 
 			if(paramRender && paramRender.variant === "child") {
 				parentTreeDependence = paramRender.parent;
-
 				VIRTUAL_CONNECTOR.child = true;
 				VIRTUAL_CONNECTOR.state = null;
 				VIRTUAL_CONNECTOR.parentFn = paramRender.parentFn;
@@ -515,11 +517,13 @@ class SCmove {
 			};
 
 			if(paramRender && paramRender.variant === "dep") {
+				const fnTree = [];
+				fnTree.push(fn);
 				this.states.forEach(item => {
 					if (item.proxyState === paramRender.parent) {
 						item.CollectionDOM.forEach((virtual => {
 							let VIRTUAL_CONNECTOR = {};
-							if(fn === virtual.Function) {
+							if(fnTree.includes(virtual.Function)) {
 								VIRTUAL_CONNECTOR.Function = virtual.Function;
 								VIRTUAL_CONNECTOR.lastState = virtual.lastState;
 								VIRTUAL_CONNECTOR.parent = virtual;
@@ -530,7 +534,8 @@ class SCmove {
 								return;
 							}
 
-							if(virtual.parentFn === fn) {
+							if(fnTree.includes(virtual.parentFn)) {
+								fnTree.push(virtual.Function);
 								VIRTUAL_CONNECTOR.Function = virtual.Function;
 								VIRTUAL_CONNECTOR.lastState = virtual.lastState;
 								VIRTUAL_CONNECTOR.parent = virtual;
@@ -542,8 +547,10 @@ class SCmove {
 							}
 						}))
 					}
-				})
+				});
 			};
+
+			console.log(COLLECTION_CONTAINER);
 
 			const itemState = {
 				parent: parentTreeDependence, 
@@ -685,7 +692,12 @@ class SCmove {
 	statement(instance, SCmain, fn, arg, wrap, dependency) {
 		this.safeIterator = this.uuidv4();
 		if(dependency && dependency.key === 'child') {
-			const node = this.createStateTree(instance, SCmain, fn, dependency.parent, wrap, { variant: 'child', parent: dependency.parent, value_parent: dependency.state, parentFn: dependency.parentFn });
+			const node = this.createStateTree(instance, SCmain, fn, dependency.parent, wrap, { 
+				variant: 'child',
+				parent: dependency.parent,
+				value_parent: dependency.state,
+				parentFn: dependency.parentFn
+			});
 			return node;
 		};
 
@@ -1013,7 +1025,6 @@ class MicroComponent {
 			current.SCmove.states.forEach(item => {
 				if(item.CollectionDOM) {
 					item.CollectionDOM.forEach(virtual => {
-						console.log(virtual);
 						if(virtual.Function.toString() === stylesClass.toString()) {
 							element = virtual.lastState;
 						}
@@ -1031,7 +1042,6 @@ class MicroComponent {
 			const wrap = document.createElement('micro_component');
 			wrap.setAttribute("style", "height: 0; width: 0; display: none;");
 
-			
 			const node = current.SCmove.statement(selector.instance, current, stylesClass, selector, wrap, dependency);
 			
 			this.childrenVirtual = false;

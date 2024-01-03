@@ -1,3 +1,6 @@
+// TODO: БОЛЬШАЯ РАБОТА ПО ПЕРЕКВАЛИФИКАЦИИ ВСЕ ПОД UUID_4 / -- сразу, потом баг
+// БАГ С ЗАВИСИМОСТЬЮ ПРОПАДЁТ ПРИ НАЛИЧИИ ЭЛЕМЕНТА КОТОРЫЙ УЖЕ СУЩЕСТВУЕТ И ПРИВЯЗАН К СТЕЙТУ , ЭТО НЕ РАБОТАЕТ ПРИ МНОЖЕСТВЕННЫХ ЗАВИСИМОСТЯХ
+
 /**
  * Хранилище компонентов
  */
@@ -12,7 +15,6 @@ const MicroStateStates = new Set();
  * Вспомогательная сущность получения объектов
  */
 class MCGet {
-
 	/**
 	 * Получить экземпляр MC по имени css файла
 	 * @param { string } fileName 
@@ -265,7 +267,7 @@ class SCmove {
 
 	render = async (state, prop, HTMLElement) => state.virtual.replaceWith(state.userNode);
 	
-	requisite = (state, renderFn, target, parentFn, mainFn) => {
+	requisite = (state, renderFn, target, parentFn) => {
 		const renderChild = {
 			key: 'child',
 			parent: target,
@@ -280,8 +282,6 @@ class SCmove {
 			}
 		});
 		
-		
-
 		if(!skip) {
 			this.treeVirtualState.push(target);
 		}
@@ -297,6 +297,7 @@ class SCmove {
 		this.states.forEach((item) => {
 			if (arg1 === item.proxyState.value) {
 				if(item.tree) {
+						// тут можно сделать проверку, если значение равно прошлому значению, то скипаем рендер.
 						item.state = val;
 						item.CollectionDOM.forEach(html => {
 							if(html.parent) {
@@ -335,13 +336,16 @@ class SCmove {
 							}
 
 							let newNode;
-
 							if(html.child) {
 								this.states.forEach(item => {
 									if(item.key === html.state.key) {
 										newNode = html.Function(item.state, (state, renderFn) => {
 											return this.requisite(state, renderFn, item, html.Function);
 										});
+
+										// html.virtualDOM.DOM = { virtual: html.lastState, userNode: newNode[0], fn: () => {
+										// 	html.lastState = newNode[0];
+										// }};
 									}
 								})
 							} else {
@@ -355,10 +359,10 @@ class SCmove {
 								const virtualElement = document.createElement('micro_component');
 								virtualElement.setAttribute("style", "height: 0; width: 0; display: none;");
 								newNode.push(virtualElement);
-							}
-
+							};
+							
 							html.virtualDOM.DOM = { virtual: html.lastState, userNode: newNode[0], fn: () => {
-								html.lastState = newNode[0]
+								html.lastState = newNode[0];
 							}};
 						});
 
@@ -410,6 +414,7 @@ class SCmove {
 				if (item.proxyState === mod) {
 					const VIRTUAL_CONNECTOR = {
 						Function: fn,
+						id: this.uuidv4(),
 						lastState: lastState,
 						virtualDOM: this.handlerDOM(lastState, this.render, item.proxyState)
 					};
@@ -436,6 +441,7 @@ class SCmove {
 									if(fnTree.includes(virtual.Function)) {
 										VIRTUAL_CONNECTOR.Function = virtual.Function;
 										VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+										VIRTUAL_CONNECTOR.id = virtual.id;
 										VIRTUAL_CONNECTOR.parent = virtual;
 										VIRTUAL_CONNECTOR.parentState = item;
 										VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
@@ -448,6 +454,7 @@ class SCmove {
 										fnTree.push(virtual.Function);
 										VIRTUAL_CONNECTOR.Function = virtual.Function;
 										VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+										VIRTUAL_CONNECTOR.id = virtual.id;
 										VIRTUAL_CONNECTOR.parent = virtual;
 										VIRTUAL_CONNECTOR.parentState = item;
 										VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
@@ -498,6 +505,7 @@ class SCmove {
 			const VIRTUAL_CONNECTOR = {
 				Function: fn,
 				lastState: lastState,
+				id: this.uuidv4(),
 				virtualDOM: this.handlerDOM(lastState, this.render, mod)
 			};
 
@@ -526,6 +534,7 @@ class SCmove {
 							if(fnTree.includes(virtual.Function)) {
 								VIRTUAL_CONNECTOR.Function = virtual.Function;
 								VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+								VIRTUAL_CONNECTOR.id = virtual.id;
 								VIRTUAL_CONNECTOR.parent = virtual;
 								VIRTUAL_CONNECTOR.parentState = item;
 								VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
@@ -538,6 +547,7 @@ class SCmove {
 								fnTree.push(virtual.Function);
 								VIRTUAL_CONNECTOR.Function = virtual.Function;
 								VIRTUAL_CONNECTOR.lastState = virtual.lastState;
+								VIRTUAL_CONNECTOR.id = virtual.id;
 								VIRTUAL_CONNECTOR.parent = virtual;
 								VIRTUAL_CONNECTOR.parentState = item;
 								VIRTUAL_CONNECTOR.parentValue = paramRender.value_parent;
@@ -549,8 +559,6 @@ class SCmove {
 					}
 				});
 			};
-
-			console.log(COLLECTION_CONTAINER);
 
 			const itemState = {
 				parent: parentTreeDependence, 
@@ -576,9 +584,9 @@ class SCmove {
 						return;
 					}
 
-					newNode = VIRTUAL_CONNECTOR.Function(mod.value, (state, renderFn) => { 
+					newNode = VIRTUAL_CONNECTOR.Function(mod.value, (state, renderFn) => {
 						return this.requisite(state, renderFn, itemState, VIRTUAL_CONNECTOR.Function);
-					});	
+					});
 				}
 				
 				if(!newNode) {

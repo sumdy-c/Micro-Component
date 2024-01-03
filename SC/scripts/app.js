@@ -36,12 +36,12 @@ const App = () => {
         },
         {
             title: 'Глобальное состояние',
-            isActive: true,
+            isActive: false,
             alias: 'global_state'
         },
         {
             title: 'Тестовая страница',
-            isActive: false,
+            isActive: true,
             alias: 'test_page'
         },
     ]);

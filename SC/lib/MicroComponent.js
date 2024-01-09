@@ -1,6 +1,6 @@
 // TODO: БОЛЬШАЯ РАБОТА ПО ПЕРЕКВАЛИФИКАЦИИ ВСЕ ПОД UUID_4 / -- сразу, потом баг
 // БАГ С ЗАВИСИМОСТЬЮ ПРОПАДЁТ ПРИ НАЛИЧИИ ЭЛЕМЕНТА КОТОРЫЙ УЖЕ СУЩЕСТВУЕТ И ПРИВЯЗАН К СТЕЙТУ , ЭТО НЕ РАБОТАЕТ ПРИ МНОЖЕСТВЕННЫХ ЗАВИСИМОСТЯХ
-
+// Реквизиты ебанные множат свой виртуальный DOM, может переписать всё ? Пофиксил, но переписать.
 /**
  * Хранилище компонентов
  */
@@ -88,9 +88,10 @@ class State {
 			this.action = true;
 		}
 
-		if(key !== undefined){
-			this.key = key
-		} 
+		if(key !== undefined) {
+			this.key = key;
+		}
+
 		this.save_value = value;
 		this.instance = { value: value };
 		MicroStateStates.add(this);
@@ -259,13 +260,16 @@ class SCmove {
 			set: (_, prop, val) => {
 				fn(val, prop, proxyDOM)
 				val.fn();
+				
 				return val;
 			},
 		});
 		return proxyDOM;
 	}
 
-	render = async (state, prop, HTMLElement) => state.virtual.replaceWith(state.userNode);
+	render = async (state, prop, HTMLElement) => {
+		state.virtual.replaceWith(state.userNode);
+	};
 	
 	requisite = (state, renderFn, target, parentFn) => {
 		const renderChild = {
@@ -294,10 +298,11 @@ class SCmove {
 	 * @param {service} val приходящее новое значение
 	 */
 	action = (val, arg, arg1, arg2) => {
+		console.log('action');
 		this.states.forEach((item) => {
 			if (arg1 === item.proxyState.value) {
 				if(item.tree) {
-						// тут можно сделать проверку, если значение равно прошлому значению, то скипаем рендер.
+						this.NotTread = true;
 						item.state = val;
 						item.CollectionDOM.forEach(html => {
 							if(html.parent) {
@@ -342,10 +347,6 @@ class SCmove {
 										newNode = html.Function(item.state, (state, renderFn) => {
 											return this.requisite(state, renderFn, item, html.Function);
 										});
-
-										// html.virtualDOM.DOM = { virtual: html.lastState, userNode: newNode[0], fn: () => {
-										// 	html.lastState = newNode[0];
-										// }};
 									}
 								})
 							} else {
@@ -1019,6 +1020,7 @@ class MicroComponent {
 	 * @returns Стилизованный селектор
 	 */
 	stylize = (selector, stylesClass, dependency) => {
+		console.log('stylize');
 		if(selector.__proto__.constructor.name === 'State' && typeof stylesClass === 'function') {
 
 			let current = null;
@@ -1033,7 +1035,7 @@ class MicroComponent {
 			current.SCmove.states.forEach(item => {
 				if(item.CollectionDOM) {
 					item.CollectionDOM.forEach(virtual => {
-						if(virtual.Function.toString() === stylesClass.toString()) {
+						if(virtual.Function === stylesClass.Function) {
 							element = virtual.lastState;
 						}
 					});
